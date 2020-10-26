@@ -1,40 +1,58 @@
 #pragma once
 
-#include <function>
+#include "ExitCondition.hpp"
+#include <vector>
+
+#include <boost/signals2/signal.hpp>
 
 namespace
 {
-  enum class EStateAction
+//TO-DO: maybe
+enum class EStateAction
   {
     eEntryAction,
     eInState,
     eExitAction,
   };
 
-  enum class EStateGuard
-  {
-    eEntryGuard,
-    eExitGuard
-  };
-
-  using AStateActionMap = std::unordered_map<EStateAction, std::function<void()>>;
-
-  using AStateGuardMap = std::unordered_map<EStateGuard, std::function<void()>>;
-
+  template <typename TStateType>
   class CState
   {
     public:
 
+      //------------------------------------------------------------------------
+      //------------------------------------------------------------------------
+      //TO-DO: add while in state option
       CState(
-        const std::string& StateName,
-        AStateActionMap&& ActionMap,
-        AStateGuardMap&& GuardMap);
+        const TStateType& StateIdentifier,
+        std::vector<CExitCondition>&& ExitConditions)
+        :mStateIdenitifier(StateIdentifier),
+         mExitConditions(std::move(ExitConditions))
+      {
+      };
 
-      const std::string mStateName;
+      //------------------------------------------------------------------------
+      //------------------------------------------------------------------------
+      void HeartBeat() const
+      {
+        //TO-DO: consider mutex lock here since accessing ref values
+        for (const auto& Each : mExitConditions)
+        {
+          if (Each())
+          {
+            mSignalTransitionFromTo(mStateName, Each.GetExitStateId())
+          }
+        }
+      }
 
-      const AStateActionMap mStateActionMap;
+      boost::signals2::signal<void(TStateType, TStateType)> mSignalTransitionFromTo;
 
-      const AStateGuardMap mStateGuardMap;
+      //TO-DO: eventually if while in state
+      //boost::signals2::signal<void(const ARepeatType&)> mInStateSignal;
+
+      const TStateType mStateName;
+
+      const std::vector<CExitCondition> mExitConditions;
   };
 }
 
